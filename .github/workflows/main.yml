@@ -1,0 +1,33 @@
+name: Daily Auto Record
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # यह रोज़ रात 12 बजे (UTC) चलेगा
+  workflow_dispatch: # इससे आप खुद भी 'Run' बटन दबाकर चला सकेंगे
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: pip install pandas
+        
+      - name: Run Script
+        run: python main.py
+        
+      - name: Commit and Push
+        run: |
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          git add daily_records.csv
+          git commit -m "Daily update $(date)" || echo "No changes to commit"
+          git push
