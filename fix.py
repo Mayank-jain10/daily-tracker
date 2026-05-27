@@ -1,25 +1,47 @@
 import os
-import random
+import subprocess
 from datetime import datetime, timedelta
 
-# 1 जनवरी 2025 से आज तक
-start_date = datetime(2025, 1, 1)
-end_date = datetime.now()
-days_count = (end_date - start_date).days
+START_DATE = datetime(2026, 2, 27)
+END_DATE = datetime(2026, 3, 10)
+COMMITS_PER_DAY = 18
+LOG_FILE = "recent_log.txt"
 
-for i in range(days_count + 1):
-    current_date = (start_date + timedelta(days=i)).strftime('%Y-%m-%d 12:00:00')
-    
-    # रैंडम तरीके से तय करना कि उस दिन कितने कमिट करने हैं
-    # 0 = कोई काम नहीं, 1-3 = हल्का हरा, 10-15 = गहरा हरा
-    commit_count = random.choice([0, 1, 2, 3, 8, 12, 15]) 
-    
-    for j in range(commit_count):
-        with open('natural_log.txt', 'a') as f:
-            f.write(f'Work on {current_date} commit {j}\n')
-        
-        # Windows CMD के लिए तारीख सेट करके कमिट करना
-        os.system(f'git add natural_log.txt')
-        os.system(f'set GIT_AUTHOR_DATE={current_date} && set GIT_COMMITTER_DATE={current_date} && git commit -m "Fixed issue #{random.randint(100, 999)}"')
+# Windows पर Git का डिफ़ॉल्ट एब्सोल्यूट पाथ
+GIT_PATH = r"C:\Program Files\Git\cmd\git.exe"
 
-print("Ab aapka 2025 ka graph ekdam REAL aur NATURAL dikhega!")
+def run_backfill():
+    total_days = (END_DATE - START_DATE).days
+    env = os.environ.copy()
+
+    # अगर डिफ़ॉल्ट पाथ पर गिट न मिले, तो लोकल एनवायरनमेंट से ढूंढने की कोशिश करें
+    git_cmd = GIT_PATH if os.path.exists(GIT_PATH) else "git"
+
+    for i in range(total_days + 1):
+        current_date = START_DATE + timedelta(days=i)
+        commit_date = f"{current_date.strftime('%Y-%m-%d')} 12:00:00"
+
+        env["GIT_AUTHOR_DATE"] = commit_date
+        env["GIT_COMMITTER_DATE"] = commit_date
+
+        for j in range(COMMITS_PER_DAY):
+            with open(LOG_FILE, "a") as f:
+                f.write(f"work {commit_date} {j}\n")
+
+            # डायरेक्ट गिट पाथ का उपयोग करके ऐड करें
+            subprocess.run([git_cmd, "add", LOG_FILE], env=env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+            commit_message = f"chore: update log {current_date.strftime('%Y-%m-%d')} {j}"
+            # डायरेक्ट गिट पाथ का उपयोग करके कमिट करें
+            subprocess.run(
+                [git_cmd, "commit", "-m", commit_message],
+                env=env,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+
+    print("done")
+
+if __name__ == "__main__":
+    run_backfill()
